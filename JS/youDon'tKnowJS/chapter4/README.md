@@ -550,7 +550,313 @@ function onlyOne() {
 
 > 이러한 유용한 암시적 강제변환이 있다.
 
-### 4.4 암시적 강제변환: * -> 불리언 (p. 121)
+### 4.4 암시적 강제변환: * -> 불리언
 
-0810날 함.
+불리언으의 암시적인 강제변환이 일어나는 표현식은 다음과 같다.
 
+1. if() 문의 조건 표현식
+2. for ( ; ; ) 에서 두 번째 조건 표현식
+3. while() 및 do...while() 루프의 조건 표현식
+4. ?: 삼항 연산 시 첫 번째 조건 표현식
+5. || 및 && 의 좌측 피연산자 
+
+
+```js
+var a = 42;
+var b = "abc";
+var c;
+var d = null;
+
+if (a) {
+  console.log('Yes'); // Yes
+}
+
+while(c) {
+  consol.log('never play');
+}
+
+c = d ? a : b;
+c;  // "abc";
+
+if ((a && d) || c) {
+  console.log('Yes'); // Yes
+}
+``` 
+
+### 4.5 && 와 || 연산자
+
+논리연산자라고 불리우지만 자바스크립트에서는 **피연산자 선택 연산자**의 기능을 하기도 한다.
+
+```js
+var a = 42;
+var b = "abc";
+var c = null;
+
+a || b; // 42
+a && b; // "abc"
+
+c || b; // "abc"
+c && b; // null
+```
+
+> && 연산자는 첫 번째 피연산자가 true면 두 번째 피연산자 값을, 첫 번째 연산자가 false면 첫 번째 피연산자 값을 내보낸다.
+
+
+## 5. 느슨한/엄격한 동등 비교
+
+느슨한 동등 비교는 `==`를, 엄격한 동등 비교는 `===`를 사용한다.
+
+많은 사람들이 `==`은 값의 동등함을, `===`는 갑과 타입 모두의 동등함을 비교한다고 생각하지만 사실상 그러지 않다.
+
+정확하게는
+
+`동등함의 비교 시 ==는 강제변환을 허용하지만, ===는 강제변환을 허용하지 않는다.`
+
+### 5.1 비교 성능
+
+타입이 같은 두 값의 동등 비교라면 `==`와 `===`이 동작하는 알고리즘은 동일하다.
+
+강제변환이 필요하다면 느슨한 동등 연산자를, 필요하지 않다면 엄격한 동등 연산자를 사용하자.
+
+> 어차피 ==든, ===든 피연산자의 타입을 체크하는 건 매한가지다. 다른 점은 타입이 다를 때 이후 처리 로직이다.
+
+### 5.2 추상 동등 비교
+
+비교할 두 값이 같은 타입이면 누구나 예상하듯이 값을 식별하여 간단히, 자연스럽게 견주어본다.
+
+* NaN은 그 자신과도 결코 동등하지 않다.
+* +0와 -0는 동등하지 않다.
+
+#### 비교하기: 문자열 -> 숫자
+
+```js
+var a = 42;
+var b = "42";
+
+a === b;  // false
+a == b; // true
+```
+
+정확히 언제 강제변환이 일어나는걸까?
+
+위에 예시에서는 42가 문자열로 바뀌어서 a가 되는걸까? 아니면 "42"가 숫자로 바뀌어서 b가 되는걸까?
+
+명세를 살펴보면 비교 전 **"42" 값이 숫자로 강제변환된다**는 것을 알 수 있다.
+
+#### 비교하기: * -> 불리언
+
+어떤 값을 true/false와 직접 비교하려고 하면 느슨한 동등 비교(==)의 숨겨진, 가장 끔찍한 강제변환 함정에 빠진다.
+
+```js
+var a = "42";
+var b = true;
+
+a == b;   // false;
+```
+
+"42"는 truthy한 값이므로 == 비교하면 true가 나올 것 같지만 아니다.
+
+명세에는 다음과 같다.
+
+1. Type(x)이 불리언이면 ToNumber(x) == y 의 비교 결과를 반환한다.
+2. Type(y)이 불리언이면 x == ToNumber(y) 의 비교 결과를 반환한다.
+
+```js
+var x = true;
+var y = "42";
+
+x == y;   // false
+```
+
+x는 불리언이므로 ToNumber(x)를 거쳐 1이 되게 되고, 1 == "42"이 되는데 타입이 상이하므로 두 번째 피연산자 "42"는 42로 바뀌어서 `1 == 42`가 되어 false가 출력된다.
+
+그래서 보통 다음과 같이 활용한다.
+
+```js
+var a = "42";
+
+// Bad Code
+if (a == true) {
+  // ...
+}
+
+// Bad Code, too
+if (a === true) {
+  // ...
+}
+
+// Not Bad (암시적으로 작동한다)
+if (a) {
+  // ...
+}
+
+// Good (명시적으로 작동)
+if (!!a) {
+  // ...
+}
+
+// Good, too (명시적으로 작동)
+if (Boolean(a)) {
+  // ...
+}
+```
+
+#### 비교하기: null -> undefined
+
+1. x가 null이고, y가 undefined면 true를 반환한다.
+2. x가 undefined이고, y가 null이면 true를 반환한다.
+
+null과 undefined를 느슨한 동등 비교(==)하면 서로에게 타입을 맞춘다.(강제변환한다)
+
+즉, null과 undefined는 느슨한 동등 비교 시 상호 간의 암시적인 강제변환이 일어나므로 비교 관점에서 구분이 되지 않는 값으로 취급되는 것이다.
+
+```js
+var a = null;
+var b;
+
+a == b;     // true
+a == null;  // true
+b == null;  // true
+a == false; // false
+b == false; // false
+a == "";    // false
+b == "";    // false
+a == 0;     // false
+b == 0;     // false
+```
+
+`null <-> undefined` 강제변환은 안전하고 예측 가능하며, 어떤 다른 값도 비교 결과 긍정 오류을 할 가능성이 없다.
+
+```js
+var a = doSomething();
+
+if (a == null) {
+  // ...
+}
+```
+
+`a == null`의 평가 결과는 `doSomething()`이 null이나 undefined를 반환할 경우에만 true, 이외의 값이 반환되면 (심지어 0, false, "" 등의 다른 falsy한 값이 넘어와도 false이다.)
+
+강제변환이 내키지 않아 명시적으로 체크하겠다고 하면 다음처럼 코드가 오히려 애매해질 수도 있다.
+
+```js
+var a = doSomething();
+
+if (a === undefined || a === null) {
+
+}
+```
+
+
+#### 비교하기: 객체 -> 비객체
+
+객체/함수/배열과 단순 스칼라 원시 값 비교는 다음과 같이 다루어진다.
+
+1. Type(x)가 String 또는 Number고 Type(y)가 객체라면, x == ToPrimitive(y)의 비교 결과를 반환한다.
+2. Type(x)가 Object이고 Type(y)가 String 또는 Number 라면, ToPrimitive(x) == y 의 비교 결과를 반환한다.
+
+```js
+var a = 42;
+var b = [42];
+
+a == b;   // true
+```
+
+3장 네이티브에서 배운 '언박싱'을 상기하자.
+
+원시 값을 감싼 객체 래퍼 (ex. new String("abc"))를 한 꺼풀 벗겨 원시 값("abc")을 반환하는 과정이다. 언박싱은 == 알고리즘의 ``ToPrimitive`` 강제변환과 관련되어 있다.
+
+```js
+var a = "abc";
+var b = Object(a);  // 'new String(a)' 와 같다.
+
+a === b;      // false
+a == b;       // true
+```
+
+b는 `ToPrimitive` 연산으로 "abc"라는 단순 스칼라 원시 값으로 강제변환되고, 이 값은 a와 동일하므로 `a == b`는 true이다.
+
+하지만 항상 이런식으로 동작하는 것은 아니다.
+
+```js
+var a = null;
+var b = Object(a);  // 'Object()' 와 같다.
+
+a == b;   // false
+
+var c = undefined;
+var d = Object(c);  // 'Object()' 와 같다.
+
+c == d;   // false
+
+var e = NaN;
+var f = Object(e);  // 'new Number(e)'와 같다.
+e == f;   // false
+```
+
+null과 undefined는 객체 래퍼가 따로 없으므로 박싱할 수 없다. 그래서 ``Object(null)``는 `Object()`로 해석되어 그냥 일반 객체가 만들어진다.
+
+NaN은 해당 객체 래퍼인 Number로 박싱되지만, ==를 만나 언박싱되면 결국 조건식은 NaN == NaN 이 되어 결과는 false이다. (--> NaN은 자기 자신과도 같지가 않으므로)
+
+
+
+### 5.3 희귀 사례
+
+가장 골치아프고 쓰기 말아야할 희귀 사례들을 말하겠다.
+
+#### 알 박힌 숫자 값
+
+```js
+Number.prototype.valueOf = function() {
+  return 3;
+}
+
+new Number(2) == 3; // true
+```
+
+#### Falsy 비교
+
+```js
+"0" == null;          // false
+"0" == undefined;     // false
+"0" == false;         // true --> 어이쿠!
+"0" == NaN;           // false
+"0" == 0;             // true
+"0" == "";            // false
+
+false == null;        // false
+false == undefined;   // false
+false == NaN;         // false
+false == "0";         // true --> 어이쿠!
+false == "";          // true --> 어이쿠!
+false == [];          // true --> 어이쿠!
+false == {};          // false
+
+"" == null;           // false
+"" == undefined;      // false
+"" == NaN;            // false
+"" == 0;              // true --> 어이쿠!
+"" == [];             // true --> 어이쿠!
+"" == {};             // false
+
+0 == null;            // false
+0 == undefined;       // false
+0 == NaN;             // false
+0 == [];              // true --> 어이쿠!
+0 == {};              // false
+```
+
+> '어이쿠'라고 붙힌 주석은 긍정 오류이며, 버그를 만들 상황으로 충분하다.
+
+#### 말도 안되는...
+
+```js
+[] == ![];      // true
+```
+
+> `!`단항 연산자는  `ToBoolean`으로 불리언 값으로 명시적 강제변환하여 결국에는 [] == false 비교를 하게된다.
+
+```js
+2 == [2];     // true
+"" == [null]; // true
+```
